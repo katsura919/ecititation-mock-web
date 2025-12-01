@@ -182,7 +182,7 @@ export default function Step1({
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>No drivers found</AlertTitle>
                     <AlertDescription>
-                      No drivers match your search criteria. You can register a
+                      No drivers match your search criteria. You can create a
                       new driver below.
                     </AlertDescription>
                   </Alert>
@@ -199,7 +199,7 @@ export default function Step1({
               onClick={() => setShowRegisterForm(true)}
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              Register New Driver
+              Create New Driver
             </Button>
           </div>
         )}
@@ -208,7 +208,7 @@ export default function Step1({
         {!selectedDriver && showRegisterForm && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Register New Driver</h3>
+              <h3 className="text-lg font-semibold">Create New Driver</h3>
               <Button
                 type="button"
                 variant="ghost"
@@ -608,7 +608,7 @@ export default function Step1({
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Register Driver
+                    Create Driver
                   </>
                 )}
               </Button>

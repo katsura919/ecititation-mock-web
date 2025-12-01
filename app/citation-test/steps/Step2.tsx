@@ -155,7 +155,7 @@ export default function Step2({
                 <AlertTitle>Vehicle not found</AlertTitle>
                 <AlertDescription>
                   No vehicle found with plate number &quot;{vehiclePlateSearch}
-                  &quot;. You can register it below.
+                  &quot;. You can create it below.
                 </AlertDescription>
               </Alert>
             )}
@@ -178,16 +178,16 @@ export default function Step2({
               }}
             >
               <Car className="w-4 h-4 mr-2" />
-              Register New Vehicle
+              Create New Vehicle
             </Button>
           </div>
         )}
 
-        {/* Register New Vehicle Form */}
+        {/* Create New Vehicle Form */}
         {!selectedVehicle && showVehicleRegisterForm && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Register New Vehicle</h3>
+              <h3 className="text-lg font-semibold">Create New Vehicle</h3>
               <Button
                 type="button"
                 variant="ghost"
