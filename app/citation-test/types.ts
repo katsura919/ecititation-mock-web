@@ -107,7 +107,7 @@ export interface NewDriverFormData {
   bloodType?: string;
   conditions?: string;
   eyesColor?: string;
-  diCodes?: string[];
+  dlCodes?: string[];
 }
 
 export interface CitationFormData {

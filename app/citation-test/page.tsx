@@ -84,7 +84,7 @@ export default function CitationTestPage() {
     lastName: "",
     middleName: "",
     email: "",
-    password: "Password123!",
+    password: "",
     contactNo: "",
     address: {
       street: "",
@@ -97,7 +97,7 @@ export default function CitationTestPage() {
     nationality: "Filipino",
     sex: "MALE",
     expirationDate: "",
-    diCodes: [],
+    dlCodes: [],
   });
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -224,19 +224,30 @@ export default function CitationTestPage() {
     setShowRegisterForm(false);
   };
 
+  // Generate password based on pattern: Lastname@YEAR_BORN
+  const generatePassword = (lastName: string, birthDate: string) => {
+    if (!lastName || !birthDate) return "";
+    const year = new Date(birthDate).getFullYear();
+    return `${lastName}@${year}`;
+  };
+
   // Register new driver
-  const handleRegisterDriver = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegisterDriver = async () => {
     setIsRegistering(true);
 
     try {
+      // Generate password if not set
+      const password =
+        newDriverData.password ||
+        generatePassword(newDriverData.lastName, newDriverData.birthDate);
+
       const payload = {
-        licenseNo: newDriverData.licenseNo,
+        licenseNo: newDriverData.licenseNo || undefined,
         firstName: newDriverData.firstName,
         lastName: newDriverData.lastName,
         middleName: newDriverData.middleName || undefined,
-        email: newDriverData.email,
-        password: newDriverData.password,
+        email: newDriverData.email || undefined,
+        password: password,
         contactNo: newDriverData.contactNo,
         address: newDriverData.address,
         birthDate: newDriverData.birthDate,
@@ -248,6 +259,7 @@ export default function CitationTestPage() {
         agencyCode: newDriverData.agencyCode || undefined,
         bloodType: newDriverData.bloodType || undefined,
         eyesColor: newDriverData.eyesColor || undefined,
+        dlCodes: newDriverData.dlCodes || undefined,
       };
 
       const response = await fetch(`${API_BASE_URL}/auth/driver/register`, {
@@ -565,7 +577,7 @@ export default function CitationTestPage() {
       lastName: "",
       middleName: "",
       email: "",
-      password: "Password123!",
+      password: "",
       contactNo: "",
       address: {
         street: "",
@@ -578,7 +590,7 @@ export default function CitationTestPage() {
       nationality: "Filipino",
       sex: "MALE",
       expirationDate: "",
-      diCodes: [],
+      dlCodes: [],
     });
     setNewVehicleData({
       plateNo: "",

@@ -220,10 +220,10 @@ export default function Step1({
               </Button>
             </div>
 
-            <form onSubmit={handleRegisterDriver} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="licenseNo">License Number *</Label>
+                  <Label htmlFor="licenseNo">License Number</Label>
                   <Input
                     id="licenseNo"
                     value={newDriverData.licenseNo}
@@ -234,7 +234,6 @@ export default function Step1({
                       })
                     }
                     placeholder="N01-12-345678"
-                    required
                   />
                 </div>
 
@@ -283,7 +282,7 @@ export default function Step1({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
@@ -294,7 +293,6 @@ export default function Step1({
                         email: e.target.value,
                       })
                     }
-                    required
                   />
                 </div>
 
@@ -386,10 +384,11 @@ export default function Step1({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="height">Height (cm)</Label>
+                  <Label htmlFor="height">Height (meters)</Label>
                   <Input
                     id="height"
                     type="number"
+                    step="0.01"
                     value={newDriverData.height || ""}
                     onChange={(e) =>
                       setNewDriverData({
@@ -399,7 +398,7 @@ export default function Step1({
                           : undefined,
                       })
                     }
-                    placeholder="170"
+                    placeholder="1.70"
                   />
                 </div>
 
@@ -458,6 +457,26 @@ export default function Step1({
                     }
                     placeholder="Brown"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dlCodes">DL Restriction Codes</Label>
+                  <Input
+                    id="dlCodes"
+                    value={newDriverData.dlCodes?.join(", ") || ""}
+                    onChange={(e) =>
+                      setNewDriverData({
+                        ...newDriverData,
+                        dlCodes: e.target.value
+                          ? e.target.value.split(",").map((code) => code.trim())
+                          : [],
+                      })
+                    }
+                    placeholder="1, 2, 3"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter restriction codes separated by commas (e.g., 1, 2, 3)
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -575,7 +594,12 @@ export default function Step1({
                 </div>
               </div>
 
-              <Button type="submit" disabled={isRegistering} className="w-full">
+              <Button
+                type="button"
+                onClick={handleRegisterDriver}
+                disabled={isRegistering}
+                className="w-full"
+              >
                 {isRegistering ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -588,7 +612,7 @@ export default function Step1({
                   </>
                 )}
               </Button>
-            </form>
+            </div>
           </div>
         )}
       </CardContent>
