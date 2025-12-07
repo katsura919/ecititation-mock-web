@@ -471,10 +471,31 @@ export default function CitationTestPage() {
       return;
     }
 
+    if (!selectedVehicle) {
+      setSubmitStatus({
+        type: "error",
+        message: "Please select or register a vehicle",
+      });
+      return;
+    }
+
     if (selectedViolations.length === 0) {
       setSubmitStatus({
         type: "error",
         message: "Please select at least one violation",
+      });
+      return;
+    }
+
+    if (
+      !citationData.location.barangay ||
+      !citationData.location.city ||
+      !citationData.location.province
+    ) {
+      setSubmitStatus({
+        type: "error",
+        message:
+          "Please fill in all required location fields (Barangay, City, Province)",
       });
       return;
     }
@@ -494,6 +515,8 @@ export default function CitationTestPage() {
         notes: citationData.notes || "",
       };
 
+      console.log("Submitting citation payload:", payload);
+
       const response = await fetch(`${API_BASE_URL}/citations`, {
         method: "POST",
         headers: {
@@ -504,6 +527,7 @@ export default function CitationTestPage() {
       });
 
       const data = await response.json();
+      console.log("Citation submission response:", data);
 
       if (data.success) {
         setSubmitStatus({
@@ -516,12 +540,20 @@ export default function CitationTestPage() {
           resetForm();
         }, 3000);
       } else {
+        // Show detailed error message from backend
+        const errorMessage =
+          data.error || data.details || "Failed to create citation";
+        const detailedMessage = data.details
+          ? `${data.error}: ${data.details}`
+          : errorMessage;
+
         setSubmitStatus({
           type: "error",
-          message: data.error || "Failed to create citation",
+          message: detailedMessage,
         });
       }
     } catch (error: any) {
+      console.error("Citation submission error:", error);
       setSubmitStatus({
         type: "error",
         message: error.message || "Network error. Please try again.",

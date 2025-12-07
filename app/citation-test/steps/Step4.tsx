@@ -7,9 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckSquare, Square } from "lucide-react";
 import { Violation, Vehicle } from "../types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -30,6 +29,10 @@ export default function Step4({
   selectedVehicle,
   calculateTotalFine,
 }: Step4Props) {
+  const handleCardClick = (violationId: string) => {
+    handleViolationToggle(violationId);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -96,18 +99,15 @@ export default function Step4({
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-sm"
                         : "hover:border-gray-400"
                     }`}
-                    onClick={() => handleViolationToggle(violation._id)}
+                    onClick={() => handleCardClick(violation._id)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() =>
-                            handleViolationToggle(violation._id)
-                          }
-                          className="mt-1"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1" />
+                        )}
                         <div className="flex-1">
                           <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
