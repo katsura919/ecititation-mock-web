@@ -26,8 +26,9 @@ import {
   Search,
   Car,
   X,
+  Plus,
 } from "lucide-react";
-import { Vehicle, NewVehicleFormData, Driver } from "../types";
+import { Vehicle, NewVehicleFormData } from "../types";
 
 interface Step2Props {
   selectedVehicle: Vehicle | null;
@@ -48,7 +49,6 @@ interface Step2Props {
   ) => void;
   isCreatingVehicle: boolean;
   handleCreateVehicle: (e: React.FormEvent) => void;
-  selectedDriver: Driver | null;
 }
 
 export default function Step2({
@@ -67,12 +67,21 @@ export default function Step2({
   isCreatingVehicle,
   handleCreateVehicle,
 }: Step2Props) {
+  const getOwnerFullName = (vehicle: Vehicle) => {
+    const nameParts = [
+      vehicle.ownerFirstName,
+      vehicle.ownerMiddleName,
+      vehicle.ownerLastName,
+    ].filter(Boolean);
+    return nameParts.length > 0 ? nameParts.join(" ") : "Unknown Owner";
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Step 2: Vehicle Information</CardTitle>
         <CardDescription>
-          Search for vehicle or register a new one
+          Search for an existing vehicle or register a new one
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -82,37 +91,69 @@ export default function Step2({
             <CheckCircle2 className="h-4 w-4 text-green-500" />
             <AlertTitle>Vehicle Selected</AlertTitle>
             <AlertDescription className="mt-2">
-              <div className="space-y-1">
-                <p className="font-semibold">{selectedVehicle.plateNo}</p>
-                <p className="text-sm">Type: {selectedVehicle.vehicleType}</p>
-                {selectedVehicle.make && (
-                  <p className="text-sm">Make: {selectedVehicle.make}</p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div>
+                    <p className="font-semibold text-lg">
+                      {selectedVehicle.plateNo}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Type: {selectedVehicle.vehicleType}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedVehicle(null);
+                        setVehiclePlateSearch("");
+                        setHasSearchedVehicle(false);
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Change
+                    </Button>
+                  </div>
+                </div>
+                <Separator className="my-2" />
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {selectedVehicle.make && (
+                    <p>
+                      <span className="font-medium">Make:</span>{" "}
+                      {selectedVehicle.make}
+                    </p>
+                  )}
+                  {selectedVehicle.vehicleModel && (
+                    <p>
+                      <span className="font-medium">Model:</span>{" "}
+                      {selectedVehicle.vehicleModel}
+                    </p>
+                  )}
+                  {selectedVehicle.color && (
+                    <p>
+                      <span className="font-medium">Color:</span>{" "}
+                      {selectedVehicle.color}
+                    </p>
+                  )}
+                  {selectedVehicle.year && (
+                    <p>
+                      <span className="font-medium">Year:</span>{" "}
+                      {selectedVehicle.year}
+                    </p>
+                  )}
+                </div>
+                {(selectedVehicle.ownerFirstName ||
+                  selectedVehicle.ownerLastName) && (
+                  <>
+                    <Separator className="my-2" />
+                    <p className="text-sm">
+                      <span className="font-medium">Registered Owner:</span>{" "}
+                      {getOwnerFullName(selectedVehicle)}
+                    </p>
+                  </>
                 )}
-                {selectedVehicle.vehicleModel && (
-                  <p className="text-sm">
-                    Model: {selectedVehicle.vehicleModel}
-                  </p>
-                )}
-                {selectedVehicle.color && (
-                  <p className="text-sm">Color: {selectedVehicle.color}</p>
-                )}
-                {selectedVehicle.year && (
-                  <p className="text-sm">Year: {selectedVehicle.year}</p>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    setSelectedVehicle(null);
-                    setVehiclePlateSearch("");
-                    setHasSearchedVehicle(false);
-                  }}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Change Vehicle
-                </Button>
               </div>
             </AlertDescription>
           </Alert>
@@ -177,8 +218,8 @@ export default function Step2({
                 }
               }}
             >
-              <Car className="w-4 h-4 mr-2" />
-              Create New Vehicle
+              <Plus className="w-4 h-4 mr-2" />
+              Register New Vehicle
             </Button>
           </div>
         )}
@@ -339,62 +380,41 @@ export default function Step2({
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="newRegisteredOwner">
-                  Registered Owner (as shown in OR/CR)
-                </Label>
-                <Input
-                  id="newRegisteredOwner"
-                  value={newVehicleData.registeredOwner}
-                  onChange={(e) =>
-                    setNewVehicleData({
-                      ...newVehicleData,
-                      registeredOwner: e.target.value,
-                    })
-                  }
-                  placeholder="Full name as in registration documents"
-                />
-              </div>
-
               {/* Vehicle Owner Information */}
               <div className="space-y-2 md:col-span-2">
                 <Separator className="my-4" />
                 <h4 className="font-semibold text-sm">
                   Vehicle Owner Information
                 </h4>
+                <p className="text-xs text-muted-foreground">
+                  Enter the vehicle owner&apos;s full name (optional if unknown)
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ownerFirstName">First Name *</Label>
+                <Label htmlFor="ownerFirstName">Owner First Name</Label>
                 <Input
                   id="ownerFirstName"
-                  value={newVehicleData.owner.firstName}
+                  value={newVehicleData.ownerFirstName || ""}
                   onChange={(e) =>
                     setNewVehicleData({
                       ...newVehicleData,
-                      owner: {
-                        ...newVehicleData.owner,
-                        firstName: e.target.value,
-                      },
+                      ownerFirstName: e.target.value,
                     })
                   }
                   placeholder="Juan"
-                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ownerMiddleName">Middle Name</Label>
+                <Label htmlFor="ownerMiddleName">Owner Middle Name</Label>
                 <Input
                   id="ownerMiddleName"
-                  value={newVehicleData.owner.middleName || ""}
+                  value={newVehicleData.ownerMiddleName || ""}
                   onChange={(e) =>
                     setNewVehicleData({
                       ...newVehicleData,
-                      owner: {
-                        ...newVehicleData.owner,
-                        middleName: e.target.value,
-                      },
+                      ownerMiddleName: e.target.value,
                     })
                   }
                   placeholder="Reyes"
@@ -402,21 +422,17 @@ export default function Step2({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ownerLastName">Last Name *</Label>
+                <Label htmlFor="ownerLastName">Owner Last Name</Label>
                 <Input
                   id="ownerLastName"
-                  value={newVehicleData.owner.lastName}
+                  value={newVehicleData.ownerLastName || ""}
                   onChange={(e) =>
                     setNewVehicleData({
                       ...newVehicleData,
-                      owner: {
-                        ...newVehicleData.owner,
-                        lastName: e.target.value,
-                      },
+                      ownerLastName: e.target.value,
                     })
                   }
                   placeholder="Dela Cruz"
-                  required
                 />
               </div>
             </div>

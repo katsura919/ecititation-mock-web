@@ -17,9 +17,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CalendarIcon, MapPin, Loader2, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { CitationFormData } from "../types";
+import { useState } from "react";
 
 interface Step3Props {
   citationData: CitationFormData;
@@ -27,6 +29,57 @@ interface Step3Props {
 }
 
 export default function Step3({ citationData, setCitationData }: Step3Props) {
+  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string>("");
+
+  const captureCurrentLocation = () => {
+    setIsCapturingLocation(true);
+    setLocationError("");
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by your browser");
+      setIsCapturingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCitationData({
+          ...citationData,
+          location: {
+            ...citationData.location,
+            coordinates: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            },
+          },
+        });
+        setIsCapturingLocation(false);
+      },
+      (error) => {
+        let errorMessage = "Unable to retrieve your location";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage =
+              "Location permission denied. Please enable location access.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        }
+        setLocationError(errorMessage);
+        setIsCapturingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
   return (
     <Card>
       <CardHeader>
@@ -34,6 +87,50 @@ export default function Step3({ citationData, setCitationData }: Step3Props) {
         <CardDescription>Where did the violation occur?</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* GPS Coordinates Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>GPS Coordinates</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={captureCurrentLocation}
+              disabled={isCapturingLocation}
+            >
+              {isCapturingLocation ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Capturing...
+                </>
+              ) : (
+                <>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Capture Current Location
+                </>
+              )}
+            </Button>
+          </div>
+
+          {citationData.location.coordinates && (
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <AlertTitle>Location Captured</AlertTitle>
+              <AlertDescription className="font-mono text-xs">
+                Lat: {citationData.location.coordinates.latitude.toFixed(6)},
+                Lng: {citationData.location.coordinates.longitude.toFixed(6)}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {locationError && (
+            <Alert variant="destructive">
+              <AlertTitle>Location Error</AlertTitle>
+              <AlertDescription>{locationError}</AlertDescription>
+            </Alert>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="street">Street/Road</Label>

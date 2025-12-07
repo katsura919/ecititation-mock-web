@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,13 +116,9 @@ export default function CitationTestPage() {
     year: undefined,
     color: "",
     bodyMark: "",
-    registeredOwner: "",
-    owner: {
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      driverId: undefined,
-    },
+    ownerFirstName: "",
+    ownerMiddleName: "",
+    ownerLastName: "",
   });
   const [isCreatingVehicle, setIsCreatingVehicle] = useState(false);
 
@@ -134,13 +130,7 @@ export default function CitationTestPage() {
   // Citation form
   const [citationData, setCitationData] = useState<CitationFormData>({
     driverId: "",
-    vehicleInfo: {
-      plateNo: "",
-      vehicleType: "PRIVATE",
-      make: "",
-      model: "",
-      color: "",
-    },
+    vehicleId: "",
     violationIds: [],
     location: {
       street: "",
@@ -258,9 +248,12 @@ export default function CitationTestPage() {
         expirationDate: newDriverData.expirationDate,
         agencyCode: newDriverData.agencyCode || undefined,
         bloodType: newDriverData.bloodType || undefined,
+        conditions: newDriverData.conditions || undefined,
         eyesColor: newDriverData.eyesColor || undefined,
         dlCodes: newDriverData.dlCodes || undefined,
       };
+
+      console.log("Sending driver registration payload:", payload);
 
       const response = await fetch(`${API_BASE_URL}/auth/driver/register`, {
         method: "POST",
@@ -271,6 +264,7 @@ export default function CitationTestPage() {
       });
 
       const data = await response.json();
+      console.log("Driver registration response:", data);
 
       if (data.success) {
         const driverData = data.data.driver;
@@ -285,7 +279,15 @@ export default function CitationTestPage() {
           contactNo: driverData.contactNo,
           address: driverData.address,
           birthDate: driverData.birthDate,
+          nationality: driverData.nationality,
+          sex: driverData.sex,
+          expirationDate: driverData.expirationDate,
           status: driverData.status,
+          weight: driverData.weight,
+          height: driverData.height,
+          bloodType: driverData.bloodType,
+          eyesColor: driverData.eyesColor,
+          dlCodes: driverData.dlCodes,
         };
 
         setSelectedDriver(newDriver);
@@ -297,12 +299,17 @@ export default function CitationTestPage() {
         });
         setTimeout(() => setSubmitStatus({ type: null, message: "" }), 3000);
       } else {
+        console.error("Driver registration error:", data);
         setSubmitStatus({
           type: "error",
-          message: data.error || "Failed to register driver",
+          message:
+            data.messages?.join(", ") ||
+            data.error ||
+            "Failed to register driver",
         });
       }
     } catch (error: any) {
+      console.error("Driver registration exception:", error);
       setSubmitStatus({
         type: "error",
         message: error.message || "Network error. Please try again.",
@@ -334,13 +341,7 @@ export default function CitationTestPage() {
         setSelectedVehicle(data.data);
         setCitationData((prev) => ({
           ...prev,
-          vehicleInfo: {
-            plateNo: data.data.plateNo,
-            vehicleType: data.data.vehicleType,
-            make: data.data.make || "",
-            model: data.data.vehicleModel || "",
-            color: data.data.color || "",
-          },
+          vehicleId: data.data._id,
         }));
         setShowVehicleRegisterForm(false);
       } else {
@@ -374,13 +375,9 @@ export default function CitationTestPage() {
         year: newVehicleData.year || undefined,
         color: newVehicleData.color || undefined,
         bodyMark: newVehicleData.bodyMark || undefined,
-        registeredOwner: newVehicleData.registeredOwner || undefined,
-        owner: {
-          firstName: newVehicleData.owner.firstName,
-          middleName: newVehicleData.owner.middleName || undefined,
-          lastName: newVehicleData.owner.lastName,
-          driverId: selectedDriver?._id || undefined,
-        },
+        ownerFirstName: newVehicleData.ownerFirstName || undefined,
+        ownerMiddleName: newVehicleData.ownerMiddleName || undefined,
+        ownerLastName: newVehicleData.ownerLastName || undefined,
       };
 
       const response = await fetch(`${API_BASE_URL}/vehicles`, {
@@ -398,13 +395,7 @@ export default function CitationTestPage() {
         setSelectedVehicle(vehicle);
         setCitationData((prev) => ({
           ...prev,
-          vehicleInfo: {
-            plateNo: vehicle.plateNo,
-            vehicleType: vehicle.vehicleType,
-            make: vehicle.make || "",
-            model: vehicle.vehicleModel || "",
-            color: vehicle.color || "",
-          },
+          vehicleId: vehicle._id,
         }));
         setShowVehicleRegisterForm(false);
         setSubmitStatus({
@@ -429,7 +420,7 @@ export default function CitationTestPage() {
   };
 
   // Handle violation toggle
-  const handleViolationToggle = (violationId: string) => {
+  const handleViolationToggle = useCallback((violationId: string) => {
     setSelectedViolations((prev) => {
       if (prev.includes(violationId)) {
         return prev.filter((id) => id !== violationId);
@@ -437,34 +428,36 @@ export default function CitationTestPage() {
         return [...prev, violationId];
       }
     });
-  };
+  }, []);
 
   // Calculate total fine
-  const calculateTotalFine = () => {
+  const calculateTotalFine = useCallback(() => {
+    if (!selectedVehicle) return 0;
+
     let total = 0;
     selectedViolations.forEach((violationId) => {
       const violation = violations.find((v) => v._id === violationId);
       if (violation) {
         if (violation.fineStructure === "FIXED" && violation.fixedFine) {
-          if (citationData.vehicleInfo.vehicleType === "PRIVATE") {
+          if (selectedVehicle.vehicleType === "PRIVATE") {
             total += violation.fixedFine.private.driver;
-          } else {
+          } else if (selectedVehicle.vehicleType === "FOR_HIRE") {
             total += violation.fixedFine.forHire.driver;
           }
         } else if (
           violation.fineStructure === "PROGRESSIVE" &&
           violation.progressiveFine
         ) {
-          if (citationData.vehicleInfo.vehicleType === "PRIVATE") {
+          if (selectedVehicle.vehicleType === "PRIVATE") {
             total += violation.progressiveFine.private.driver.firstOffense;
-          } else {
+          } else if (selectedVehicle.vehicleType === "FOR_HIRE") {
             total += violation.progressiveFine.forHire.driver.firstOffense;
           }
         }
       }
     });
     return total;
-  };
+  }, [selectedVehicle, selectedViolations, violations]);
 
   // Submit citation
   const handleSubmit = async (e: React.FormEvent) => {
@@ -492,7 +485,7 @@ export default function CitationTestPage() {
     try {
       const payload = {
         driverId: selectedDriver._id,
-        vehicleInfo: citationData.vehicleInfo,
+        vehicleId: selectedVehicle?._id,
         violationIds: selectedViolations,
         location: citationData.location,
         violationDateTime: citationData.violationDateTime.toISOString(),
@@ -552,13 +545,7 @@ export default function CitationTestPage() {
     setShowVehicleRegisterForm(false);
     setCitationData({
       driverId: "",
-      vehicleInfo: {
-        plateNo: "",
-        vehicleType: "PRIVATE",
-        make: "",
-        model: "",
-        color: "",
-      },
+      vehicleId: "",
       violationIds: [],
       location: {
         street: "",
@@ -601,13 +588,9 @@ export default function CitationTestPage() {
       year: undefined,
       color: "",
       bodyMark: "",
-      registeredOwner: "",
-      owner: {
-        firstName: "",
-        middleName: "",
-        lastName: "",
-        driverId: undefined,
-      },
+      ownerFirstName: "",
+      ownerMiddleName: "",
+      ownerLastName: "",
     });
     setSubmitStatus({ type: null, message: "" });
     setCurrentStep(1);
@@ -804,7 +787,6 @@ export default function CitationTestPage() {
             setNewVehicleData={setNewVehicleData}
             isCreatingVehicle={isCreatingVehicle}
             handleCreateVehicle={handleCreateVehicle}
-            selectedDriver={selectedDriver}
           />
         )}
 
@@ -821,7 +803,7 @@ export default function CitationTestPage() {
             violationsLoading={violationsLoading}
             selectedViolations={selectedViolations}
             handleViolationToggle={handleViolationToggle}
-            citationData={citationData}
+            selectedVehicle={selectedVehicle}
             calculateTotalFine={calculateTotalFine}
           />
         )}
@@ -829,6 +811,7 @@ export default function CitationTestPage() {
         {currentStep === 5 && (
           <Step5
             selectedDriver={selectedDriver}
+            selectedVehicle={selectedVehicle}
             citationData={citationData}
             selectedViolations={selectedViolations}
             violations={violations}

@@ -1,15 +1,29 @@
 export interface Driver {
   _id: string;
   driverID: string;
-  licenseNo: string;
+  licenseNo?: string;
   firstName: string;
   middleName?: string;
   lastName: string;
-  email: string;
+  email?: string;
   contactNo: string;
-  address?: string;
-  birthDate?: string;
-  status: string;
+  address: {
+    street: string;
+    barangay: string;
+    city: string;
+    province: string;
+    postalCode: string;
+  };
+  birthDate: string;
+  nationality: string;
+  sex: "MALE" | "FEMALE";
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "EXPIRED";
+  weight?: number;
+  height?: number;
+  expirationDate: string;
+  bloodType?: string;
+  eyesColor?: string;
+  dlCodes?: string[];
 }
 
 export interface Violation {
@@ -18,6 +32,7 @@ export interface Violation {
   title: string;
   description: string;
   fineStructure: "FIXED" | "PROGRESSIVE";
+  legalReference?: string;
   fixedFine?: {
     private: { driver: number; mvOwner: number };
     forHire: { driver: number; operator: number };
@@ -26,18 +41,34 @@ export interface Violation {
     private: {
       driver: {
         firstOffense: number;
-        secondOffense: number;
-        thirdOffense: number;
+        secondOffense?: number;
+        thirdOffense?: number;
+        subsequentOffense?: number;
+      };
+      mvOwner: {
+        firstOffense: number;
+        secondOffense?: number;
+        thirdOffense?: number;
+        subsequentOffense?: number;
       };
     };
     forHire: {
       driver: {
         firstOffense: number;
-        secondOffense: number;
-        thirdOffense: number;
+        secondOffense?: number;
+        thirdOffense?: number;
+        subsequentOffense?: number;
+      };
+      operator: {
+        firstOffense: number;
+        secondOffense?: number;
+        thirdOffense?: number;
+        subsequentOffense?: number;
       };
     };
   };
+  accessoryPenalty?: string;
+  isActive: boolean;
 }
 
 export interface Vehicle {
@@ -50,18 +81,12 @@ export interface Vehicle {
   year?: number;
   color?: string;
   bodyMark?: string;
-  registeredOwner?: string;
-  ownerId?: string;
-  status: string;
-}
-
-export interface VehicleOwner {
-  _id: string;
-  vehicleOwnerID: string;
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  status: string;
+  ownerFirstName?: string;
+  ownerMiddleName?: string;
+  ownerLastName?: string;
+  registrationDate?: string;
+  expirationDate?: string;
+  notes?: string;
 }
 
 export interface NewVehicleFormData {
@@ -73,13 +98,9 @@ export interface NewVehicleFormData {
   year?: number;
   color?: string;
   bodyMark?: string;
-  registeredOwner?: string;
-  owner: {
-    firstName: string;
-    middleName?: string;
-    lastName: string;
-    driverId?: string;
-  };
+  ownerFirstName?: string;
+  ownerMiddleName?: string;
+  ownerLastName?: string;
 }
 
 export interface NewDriverFormData {
@@ -112,13 +133,7 @@ export interface NewDriverFormData {
 
 export interface CitationFormData {
   driverId: string;
-  vehicleInfo: {
-    plateNo: string;
-    vehicleType: "PRIVATE" | "FOR_HIRE";
-    make?: string;
-    model?: string;
-    color?: string;
-  };
+  vehicleId: string;
   violationIds: string[];
   location: {
     street?: string;
