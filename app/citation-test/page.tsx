@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,6 +146,7 @@ export default function CitationTestPage() {
 
   // Submission
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false); // Use ref to track submission state more reliably
   const [enforcerId, setEnforcerId] = useState(MOCK_ENFORCER_ID);
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>({
     type: null,
@@ -462,6 +463,28 @@ export default function CitationTestPage() {
   // Submit citation
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+
+    const submitId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`[Submit] Submit ID: ${submitId} - handleSubmit called`);
+
+    // Use ref for more reliable duplicate prevention
+    if (isSubmittingRef.current) {
+      console.log(
+        `[Submit] Submit ID: ${submitId} - Already submitting (REF check), BLOCKED`
+      );
+      return;
+    }
+
+    // Double check with state too
+    if (isSubmitting) {
+      console.log(
+        `[Submit] Submit ID: ${submitId} - Already submitting (STATE check), BLOCKED`
+      );
+      return;
+    }
+
+    console.log(`[Submit] Submit ID: ${submitId} - Starting validation`);
 
     if (!selectedDriver) {
       setSubmitStatus({
@@ -500,6 +523,10 @@ export default function CitationTestPage() {
       return;
     }
 
+    console.log(
+      `[Submit] Submit ID: ${submitId} - Validation passed, setting flags`
+    );
+    isSubmittingRef.current = true; // Set ref immediately
     setIsSubmitting(true);
     setSubmitStatus({ type: null, message: "" });
 
@@ -515,7 +542,10 @@ export default function CitationTestPage() {
         notes: citationData.notes || "",
       };
 
-      console.log("Submitting citation payload:", payload);
+      console.log(
+        `[Submit] Submit ID: ${submitId} - Sending API request`,
+        payload
+      );
 
       const response = await fetch(`${API_BASE_URL}/citations`, {
         method: "POST",
@@ -527,7 +557,10 @@ export default function CitationTestPage() {
       });
 
       const data = await response.json();
-      console.log("Citation submission response:", data);
+      console.log(
+        `[Submit] Submit ID: ${submitId} - API response received`,
+        data
+      );
 
       if (data.success) {
         setSubmitStatus({
@@ -553,12 +586,14 @@ export default function CitationTestPage() {
         });
       }
     } catch (error: any) {
-      console.error("Citation submission error:", error);
+      console.error(`[Submit] Submit ID: ${submitId} - Error:`, error);
       setSubmitStatus({
         type: "error",
         message: error.message || "Network error. Please try again.",
       });
     } finally {
+      console.log(`[Submit] Submit ID: ${submitId} - Clearing flags`);
+      isSubmittingRef.current = false; // Clear ref
       setIsSubmitting(false);
     }
   };
@@ -880,7 +915,11 @@ export default function CitationTestPage() {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

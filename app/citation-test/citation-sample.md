@@ -862,6 +862,260 @@ curl -X POST http://localhost:5000/api/v1/auth/driver/register \
 
 ---
 
+## Progressive Fine Implementation - Current Status
+
+### ⚠️ IMPORTANT: Progressive Fines Currently Default to First Offense
+
+Based on the backend code analysis, the progressive fine system is **partially implemented**. Here's what you need to know:
+
+### Current Implementation
+
+**Location**: `backend/src/modules/v1/citations/citations.controller.ts` (Lines 104-127)
+
+```typescript
+// Build violation items with calculated fines
+const violationItems = violations.map((violation) => {
+  let fineAmount = 0;
+
+  if (violation.fineStructure === "FIXED" && violation.fixedFine) {
+    // Fixed fines work as expected
+    if (vehicle.vehicleType === "PRIVATE") {
+      fineAmount = violation.fixedFine.private.driver;
+    } else if (vehicle.vehicleType === "FOR_HIRE") {
+      fineAmount = violation.fixedFine.forHire.driver;
+    }
+  } else if (
+    violation.fineStructure === "PROGRESSIVE" &&
+    violation.progressiveFine
+  ) {
+    // ⚠️ ALWAYS DEFAULTS TO FIRST OFFENSE
+    // Comment in code: "For now, default to first offense"
+    // Comment in code: "In a real system, you'd check driver's violation history"
+    if (vehicle.vehicleType === "PRIVATE") {
+      fineAmount = violation.progressiveFine.private.driver.firstOffense;
+    } else if (vehicle.vehicleType === "FOR_HIRE") {
+      fineAmount = violation.progressiveFine.forHire.driver.firstOffense;
+    }
+  }
+
+  return {
+    violationId: violation._id,
+    code: violation.code,
+    title: violation.title,
+    description: violation.description,
+    fineAmount,
+    offenseCount: 1, // ⚠️ HARDCODED TO 1 (first offense)
+  };
+});
+```
+
+### What's Missing
+
+The system **does NOT currently**:
+
+- Check the driver's violation history
+- Count previous violations of the same type
+- Automatically escalate fines for repeat offenders
+- Distinguish between 1st, 2nd, 3rd, or subsequent offenses
+
+### How to Implement Automatic Offense Counting
+
+To fully implement progressive fines, you need to add the following logic:
+
+#### 1. **Query Previous Citations**
+
+Before calculating the fine, query the database for previous citations:
+
+```typescript
+// Get driver's previous violations of the same type
+const previousCitations = await Citation.find({
+  driverId: driverId,
+  "violations.violationId": violation._id,
+  status: {
+    $in: [CitationStatus.PAID, CitationStatus.PENDING, CitationStatus.OVERDUE],
+  },
+  isVoid: false,
+  _id: { $ne: citation._id }, // Exclude current citation if updating
+});
+
+// Count how many times this violation was committed
+const offenseCount =
+  previousCitations.reduce((count, citation) => {
+    const violationCount = citation.violations.filter(
+      (v) => v.violationId.toString() === violation._id.toString()
+    ).length;
+    return count + violationCount;
+  }, 0) + 1; // +1 for current offense
+```
+
+#### 2. **Calculate Progressive Fine Based on Offense Count**
+
+```typescript
+let fineAmount = 0;
+
+if (violation.fineStructure === "PROGRESSIVE" && violation.progressiveFine) {
+  const fineSchedule =
+    vehicle.vehicleType === "PRIVATE"
+      ? violation.progressiveFine.private.driver
+      : violation.progressiveFine.forHire.driver;
+
+  // Determine fine based on offense count
+  if (offenseCount === 1) {
+    fineAmount = fineSchedule.firstOffense;
+  } else if (offenseCount === 2 && fineSchedule.secondOffense) {
+    fineAmount = fineSchedule.secondOffense;
+  } else if (offenseCount === 3 && fineSchedule.thirdOffense) {
+    fineAmount = fineSchedule.thirdOffense;
+  } else if (fineSchedule.subsequentOffense) {
+    fineAmount = fineSchedule.subsequentOffense;
+  } else {
+    // If no subsequent offense defined, use the highest available
+    fineAmount =
+      fineSchedule.thirdOffense ||
+      fineSchedule.secondOffense ||
+      fineSchedule.firstOffense;
+  }
+}
+```
+
+#### 3. **Updated Implementation Example**
+
+Here's the complete updated code for `citations.controller.ts`:
+
+```typescript
+// Build violation items with calculated fines
+const violationItems = await Promise.all(
+  violations.map(async (violation) => {
+    let fineAmount = 0;
+    let offenseCount = 1;
+
+    if (violation.fineStructure === "FIXED" && violation.fixedFine) {
+      // Fixed fines remain the same
+      if (vehicle.vehicleType === "PRIVATE") {
+        fineAmount = violation.fixedFine.private.driver;
+      } else if (vehicle.vehicleType === "FOR_HIRE") {
+        fineAmount = violation.fixedFine.forHire.driver;
+      }
+    } else if (
+      violation.fineStructure === "PROGRESSIVE" &&
+      violation.progressiveFine
+    ) {
+      // Check driver's violation history
+      const previousCitations = await Citation.find({
+        driverId: driverId,
+        "violations.violationId": violation._id,
+        status: {
+          $in: [
+            CitationStatus.PAID,
+            CitationStatus.PENDING,
+            CitationStatus.OVERDUE,
+            CitationStatus.PARTIALLY_PAID,
+          ],
+        },
+        isVoid: false,
+      });
+
+      // Count total occurrences of this specific violation
+      offenseCount =
+        previousCitations.reduce((count, citation) => {
+          const violationCount = citation.violations.filter(
+            (v: any) => v.violationId.toString() === violation._id.toString()
+          ).length;
+          return count + violationCount;
+        }, 0) + 1; // +1 for current offense
+
+      // Get appropriate fine schedule
+      const fineSchedule =
+        vehicle.vehicleType === "PRIVATE"
+          ? violation.progressiveFine.private.driver
+          : violation.progressiveFine.forHire.driver;
+
+      // Determine fine based on offense count
+      if (offenseCount === 1) {
+        fineAmount = fineSchedule.firstOffense;
+      } else if (offenseCount === 2 && fineSchedule.secondOffense) {
+        fineAmount = fineSchedule.secondOffense;
+      } else if (offenseCount === 3 && fineSchedule.thirdOffense) {
+        fineAmount = fineSchedule.thirdOffense;
+      } else if (fineSchedule.subsequentOffense) {
+        fineAmount = fineSchedule.subsequentOffense;
+      } else {
+        // Fallback to highest available fine
+        fineAmount =
+          fineSchedule.thirdOffense ||
+          fineSchedule.secondOffense ||
+          fineSchedule.firstOffense;
+      }
+    }
+
+    return {
+      violationId: violation._id,
+      code: violation.code,
+      title: violation.title,
+      description: violation.description,
+      fineAmount,
+      offenseCount, // Now dynamic instead of hardcoded to 1
+    };
+  })
+);
+```
+
+### Important Considerations
+
+1. **Performance**: Querying previous citations for each violation adds database overhead. Consider:
+
+   - Caching driver violation history
+   - Indexing the `violations.violationId` field
+   - Batch querying if creating citations with multiple violations
+
+2. **Date Range**: You may want to only count violations within a specific time period (e.g., last 12 months):
+
+   ```typescript
+   const twelveMonthsAgo = new Date();
+   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+   const previousCitations = await Citation.find({
+     driverId: driverId,
+     "violations.violationId": violation._id,
+     violationDateTime: { $gte: twelveMonthsAgo },
+     // ... rest of query
+   });
+   ```
+
+3. **Paid vs Unpaid**: Current implementation counts PENDING and OVERDUE violations. You might want to only count PAID violations to prevent gaming the system.
+
+4. **Void Citations**: The code correctly excludes voided citations (`isVoid: false`).
+
+### Database Indexes Needed
+
+Add these indexes for better performance:
+
+```typescript
+// In citation.model.ts
+CitationSchema.index({ driverId: 1, "violations.violationId": 1 });
+CitationSchema.index({ driverId: 1, violationDateTime: -1 });
+CitationSchema.index({ status: 1, isVoid: 1 });
+```
+
+### Testing the Implementation
+
+1. **Create first offense** for a driver with violation "1i" (Reckless Driving)
+
+   - Verify `offenseCount: 1` and fine = `firstOffense` amount
+
+2. **Create second offense** for same driver, same violation
+
+   - Verify `offenseCount: 2` and fine = `secondOffense` amount
+
+3. **Create multiple violations** in one citation
+
+   - Each violation should have independent offense counting
+
+4. **Test with voided citations**
+   - Voided citations should not count toward offense history
+
+---
+
 ## Version Information
 
 - **Created**: December 2025
@@ -869,3 +1123,4 @@ curl -X POST http://localhost:5000/api/v1/auth/driver/register \
 - **UI Library**: shadcn/ui
 - **Backend**: Node.js with Express
 - **Database**: MongoDB
+- **Progressive Fine Status**: ⚠️ Partially Implemented (defaults to first offense)
